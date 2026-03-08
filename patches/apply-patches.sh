@@ -9,14 +9,20 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Applying nvim compatibility patches..."
 
-# 1. Treesitter shims (newer treesitter removed modules that older plugins depend on)
+# 1. Treesitter shims (only if newer treesitter that removed these modules)
 TS_DIR="${LAZY_DIR}/nvim-treesitter/lua/nvim-treesitter"
 if [ -d "$TS_DIR" ]; then
-    cp "${SCRIPT_DIR}/nvim-treesitter/configs.lua" "$TS_DIR/configs.lua"
-    cp "${SCRIPT_DIR}/nvim-treesitter/ts_utils.lua" "$TS_DIR/ts_utils.lua"
-    cp "${SCRIPT_DIR}/nvim-treesitter/locals.lua" "$TS_DIR/locals.lua"
-    cp "${SCRIPT_DIR}/nvim-treesitter/query.lua" "$TS_DIR/query.lua"
-    echo "  -> treesitter shims applied"
+    # Only apply shims if the original config.lua exists (new treesitter)
+    # and configs.lua does not (removed in new treesitter)
+    if [ -f "$TS_DIR/config.lua" ] && ! grep -q "get_module" "$TS_DIR/configs.lua" 2>/dev/null; then
+        cp "${SCRIPT_DIR}/nvim-treesitter/configs.lua" "$TS_DIR/configs.lua"
+        cp "${SCRIPT_DIR}/nvim-treesitter/ts_utils.lua" "$TS_DIR/ts_utils.lua"
+        cp "${SCRIPT_DIR}/nvim-treesitter/locals.lua" "$TS_DIR/locals.lua"
+        cp "${SCRIPT_DIR}/nvim-treesitter/query.lua" "$TS_DIR/query.lua"
+        echo "  -> treesitter shims applied (new treesitter detected)"
+    else
+        echo "  -> treesitter has original modules, skipping shims"
+    fi
 else
     echo "  -> treesitter not found, skipping shims"
 fi
