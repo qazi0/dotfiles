@@ -39,12 +39,7 @@ else
             sudo apt-get update -qq
             sudo apt-get install -y -qq eza 2>/dev/null
         else
-            # ARM/other: install via cargo
-            if ! command -v cargo &> /dev/null; then
-                curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 2>/dev/null
-                source "$HOME/.cargo/env"
-            fi
-            cargo install eza 2>/dev/null
+            echo "  -> eza: no ARM deb package available, skipping (use 'ls' instead)"
         fi
     fi
 
