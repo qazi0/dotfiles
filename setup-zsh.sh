@@ -156,6 +156,9 @@ if [ -f "$HOME/.zshrc" ]; then
 fi
 
 cat > "$HOME/.zshrc" << 'ZSHRC'
+# Local binaries
+export PATH="$HOME/.local/bin:$PATH"
+
 # Oh-My-Zsh
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_THEME="robbyrussell"
