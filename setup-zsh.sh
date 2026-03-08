@@ -39,8 +39,14 @@ else
         sudo apt-get install -y -qq eza 2>/dev/null
     fi
 
-    # fzf, ripgrep, bat (bat is batcat on Ubuntu)
-    sudo apt-get install -y -qq fzf ripgrep bat 2>/dev/null || true
+    # fzf (from git for latest version + keybindings)
+    if ! command -v fzf &> /dev/null; then
+        git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+        ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
+    fi
+
+    # ripgrep, bat (bat is batcat on Ubuntu)
+    sudo apt-get install -y -qq ripgrep bat 2>/dev/null || true
     # Ubuntu names bat as batcat - create symlink
     if command -v batcat &> /dev/null && ! command -v bat &> /dev/null; then
         sudo ln -sf "$(which batcat)" /usr/local/bin/bat
@@ -118,15 +124,11 @@ if [[ "$OS" == "Darwin" ]]; then
     # Homebrew fzf install script
     "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish 2>/dev/null || true
 else
-    # fzf keybindings on Linux
-    if [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
-        mkdir -p ~/.fzf
-        cp /usr/share/doc/fzf/examples/key-bindings.zsh ~/.fzf/key-bindings.zsh
-        cp /usr/share/doc/fzf/examples/completion.zsh ~/.fzf/completion.zsh 2>/dev/null || true
-        cat > ~/.fzf.zsh << 'FZFRC'
-source ~/.fzf/key-bindings.zsh
-[ -f ~/.fzf/completion.zsh ] && source ~/.fzf/completion.zsh
-FZFRC
+    # fzf keybindings on Linux (git install already sets up ~/.fzf.zsh)
+    if [ -f ~/.fzf.zsh ]; then
+        echo "  -> fzf keybindings already configured"
+    elif [ -f ~/.fzf/install ]; then
+        ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
     fi
 fi
 echo "  -> fzf configured"
