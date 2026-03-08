@@ -1,5 +1,7 @@
 # General
-alias ls='eza --icons -F -H --group-directories-first --git -1'
+if command -v eza &> /dev/null; then
+  alias ls='eza --icons -F -H --group-directories-first --git -1'
+fi
 alias cl='clear'
 alias vi=nvim
 alias sz='source ~/.zshrc'
