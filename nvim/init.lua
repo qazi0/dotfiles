@@ -1,4 +1,7 @@
 vim.g.lspconfig_warn_deprecated = false
+if not vim.lsp.get_active_clients then
+  vim.lsp.get_active_clients = vim.lsp.get_clients
+end
 require "core"
 
 local custom_init_path = vim.api.nvim_get_runtime_file("lua/custom/init.lua", false)[1]
