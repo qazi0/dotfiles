@@ -30,13 +30,22 @@ if [[ "$OS" == "Darwin" ]]; then
 else
     # eza
     if ! command -v eza &> /dev/null; then
-        sudo apt-get install -y -qq gpg 2>/dev/null
-        sudo mkdir -p /etc/apt/keyrings
-        wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg 2>/dev/null || true
-        echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list > /dev/null
-        sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq eza 2>/dev/null
+        if [[ "$(uname -m)" == "x86_64" ]]; then
+            sudo apt-get install -y -qq gpg wget 2>/dev/null
+            sudo mkdir -p /etc/apt/keyrings
+            wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --batch --dearmor -o /etc/apt/keyrings/gierens.gpg 2>/dev/null || true
+            echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list > /dev/null
+            sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq eza 2>/dev/null
+        else
+            # ARM/other: install via cargo
+            if ! command -v cargo &> /dev/null; then
+                curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 2>/dev/null
+                source "$HOME/.cargo/env"
+            fi
+            cargo install eza 2>/dev/null
+        fi
     fi
 
     # fzf (from git for latest version + keybindings)
@@ -60,10 +69,20 @@ else
     # yazi
     if ! command -v yazi &> /dev/null; then
         YAZI_VERSION=$(curl -sSf https://api.github.com/repos/sxyazi/yazi/releases/latest | grep tag_name | cut -d'"' -f4)
-        curl -sSfL "https://github.com/sxyazi/yazi/releases/download/${YAZI_VERSION}/yazi-x86_64-unknown-linux-gnu.zip" -o /tmp/yazi.zip
-        unzip -oq /tmp/yazi.zip -d /tmp/yazi
-        sudo mv /tmp/yazi/yazi-x86_64-unknown-linux-gnu/yazi /usr/local/bin/yazi
-        rm -rf /tmp/yazi /tmp/yazi.zip
+        ARCH="$(uname -m)"
+        if [[ "$ARCH" == "x86_64" ]]; then
+            YAZI_ARCH="x86_64-unknown-linux-gnu"
+        elif [[ "$ARCH" == "aarch64" ]]; then
+            YAZI_ARCH="aarch64-unknown-linux-gnu"
+        fi
+        if [[ -n "$YAZI_ARCH" ]]; then
+            curl -sSfL "https://github.com/sxyazi/yazi/releases/download/${YAZI_VERSION}/yazi-${YAZI_ARCH}.zip" -o /tmp/yazi.zip
+            unzip -oq /tmp/yazi.zip -d /tmp/yazi
+            sudo mv "/tmp/yazi/yazi-${YAZI_ARCH}/yazi" /usr/local/bin/yazi
+            rm -rf /tmp/yazi /tmp/yazi.zip
+        else
+            echo "  -> yazi: unsupported arch $ARCH, skipping"
+        fi
     fi
 fi
 
