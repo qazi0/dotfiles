@@ -56,9 +56,10 @@ else
         sudo ln -sf "$(which batcat)" /usr/local/bin/bat
     fi
 
-    # zoxide
+    # zoxide (installs to ~/.local/bin)
+    export PATH="$HOME/.local/bin:$PATH"
     if ! command -v zoxide &> /dev/null; then
-        curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh 2>/dev/null
+        curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
     fi
 
     # yazi
