@@ -49,16 +49,16 @@ else
         ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
     fi
 
-    # ripgrep, bat (bat is batcat on Ubuntu)
-    sudo apt-get install -y -qq ripgrep bat 2>/dev/null || true
+    # ripgrep, bat, zoxide (bat is batcat on Ubuntu)
+    sudo apt-get install -y -qq ripgrep bat zoxide 2>/dev/null || true
     # Ubuntu names bat as batcat - create symlink
     if command -v batcat &> /dev/null && ! command -v bat &> /dev/null; then
         sudo ln -sf "$(which batcat)" /usr/local/bin/bat
     fi
 
-    # zoxide (installs to ~/.local/bin)
-    export PATH="$HOME/.local/bin:$PATH"
+    # zoxide fallback (if apt didn't have it on older distros)
     if ! command -v zoxide &> /dev/null; then
+        export PATH="$HOME/.local/bin:$PATH"
         curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
     fi
 
