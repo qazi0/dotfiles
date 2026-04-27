@@ -1,25 +1,55 @@
 #!/usr/bin/env bash
 # Neovim setup script for Ubuntu/Debian Linux
-# Usage: curl -fsSL <raw-url>/setup-linux.sh | bash
+# Usage: ./setup-linux.sh [--quiet|-q]
 
 set -e
 
 DOTFILES_DIR="${DOTFILES_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 
+# Parse flags
+QUIET=0
+for arg in "$@"; do
+    case "$arg" in
+        --quiet|-q) QUIET=1 ;;
+    esac
+done
+
+# Helper: run a command, suppressing output only if --quiet
+run() {
+    if [ "$QUIET" -eq 1 ]; then
+        "$@" > /dev/null 2>&1
+    else
+        "$@"
+    fi
+}
+
+# Apt wrapper that respects --quiet
+apt_run() {
+    if [ "$QUIET" -eq 1 ]; then
+        sudo apt-get -qq "$@" > /dev/null 2>&1
+    else
+        sudo apt-get "$@"
+    fi
+}
+
 echo "=== Neovim Setup (Linux) ==="
 
 # 1. Install dependencies
 echo "[1/6] Installing dependencies..."
-sudo apt-get update -qq
-sudo apt-get install -y -qq ripgrep gcc build-essential git curl > /dev/null 2>&1
+apt_run update
+apt_run install -y ripgrep gcc build-essential git curl
 echo "  -> ripgrep, gcc, build-essential, git installed"
 
 # 2. Install neovim via unstable PPA (ships current releases)
 echo "[2/6] Installing neovim..."
 if ! command -v nvim &> /dev/null || [[ "$(nvim --version | head -1)" < "NVIM v0.10" ]]; then
-    sudo add-apt-repository -y ppa:neovim-ppa/unstable > /dev/null 2>&1
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq neovim > /dev/null 2>&1
+    if [ "$QUIET" -eq 1 ]; then
+        sudo add-apt-repository -y ppa:neovim-ppa/unstable > /dev/null 2>&1
+    else
+        sudo add-apt-repository -y ppa:neovim-ppa/unstable
+    fi
+    apt_run update
+    apt_run install -y neovim
     echo "  -> neovim $(nvim --version | head -1) installed"
 else
     echo "  -> neovim already installed: $(nvim --version | head -1)"
@@ -37,10 +67,13 @@ echo "  -> config copied to ~/.config/nvim/"
 
 # 5. Install plugins via lazy.nvim
 echo "[5/6] Installing plugins (this may take a minute)..."
-# First launch bootstraps lazy.nvim, second syncs plugins
 nvim --headless -c 'quitall' 2>/dev/null || true
 sleep 2
-nvim --headless -c 'lua require("lazy").sync()' -c 'sleep 30' -c 'quitall' 2>/dev/null || true
+if [ "$QUIET" -eq 1 ]; then
+    nvim --headless -c 'lua require("lazy").sync()' -c 'sleep 30' -c 'quitall' > /dev/null 2>&1 || true
+else
+    nvim --headless -c 'lua require("lazy").sync()' -c 'sleep 30' -c 'quitall' || true
+fi
 echo "  -> plugins installed"
 
 # 6. Apply compatibility patches

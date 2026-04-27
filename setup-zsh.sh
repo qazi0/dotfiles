@@ -1,13 +1,48 @@
 #!/usr/bin/env bash
 # Oh-My-Zsh + plugins + shell tools setup script
 # Works on both macOS and Linux
-# Usage: ./setup-zsh.sh
+# Usage: ./setup-zsh.sh [--quiet|-q]
 
 set -e
 
 DOTFILES_DIR="${DOTFILES_DIR:-$(cd "$(dirname "$0")" && pwd)}"
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 OS="$(uname)"
+
+# Parse flags
+QUIET=0
+for arg in "$@"; do
+    case "$arg" in
+        --quiet|-q) QUIET=1 ;;
+    esac
+done
+
+# Apt wrapper that respects --quiet
+apt_run() {
+    if [ "$QUIET" -eq 1 ]; then
+        sudo apt-get -qq "$@" > /dev/null 2>&1
+    else
+        sudo apt-get "$@"
+    fi
+}
+
+# Brew wrapper that respects --quiet
+brew_run() {
+    if [ "$QUIET" -eq 1 ]; then
+        HOMEBREW_NO_AUTO_UPDATE=1 brew "$@" > /dev/null 2>&1 || true
+    else
+        HOMEBREW_NO_AUTO_UPDATE=1 brew "$@" || true
+    fi
+}
+
+# Generic command wrapper
+run() {
+    if [ "$QUIET" -eq 1 ]; then
+        "$@" > /dev/null 2>&1
+    else
+        "$@"
+    fi
+}
 
 echo "=== Zsh Setup ($OS) ==="
 
@@ -16,9 +51,10 @@ echo "[1/7] Checking zsh..."
 if ! command -v zsh &> /dev/null; then
     echo "  -> Installing zsh..."
     if [[ "$OS" == "Darwin" ]]; then
-        brew install zsh
+        brew_run install zsh
     else
-        sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+        apt_run update
+        apt_run install -y zsh
     fi
 fi
 echo "  -> $(zsh --version | head -1)"
@@ -26,18 +62,18 @@ echo "  -> $(zsh --version | head -1)"
 # 2. Install shell tools: eza, fzf, ripgrep, bat, zoxide, yazi
 echo "[2/7] Installing shell tools..."
 if [[ "$OS" == "Darwin" ]]; then
-    HOMEBREW_NO_AUTO_UPDATE=1 brew install eza fzf ripgrep bat zoxide yazi 2>/dev/null || true
+    brew_run install eza fzf ripgrep bat zoxide yazi
 else
     # eza
     if ! command -v eza &> /dev/null; then
         if [[ "$(uname -m)" == "x86_64" ]]; then
-            sudo apt-get install -y -qq gpg wget 2>/dev/null
+            apt_run install -y gpg wget
             sudo mkdir -p /etc/apt/keyrings
             wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --batch --dearmor -o /etc/apt/keyrings/gierens.gpg 2>/dev/null || true
             echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list > /dev/null
             sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq eza 2>/dev/null
+            apt_run update
+            apt_run install -y eza
         else
             echo "  -> eza: no ARM deb package available, skipping (use 'ls' instead)"
         fi
@@ -45,24 +81,27 @@ else
 
     # fzf (from git for latest version + keybindings)
     if ! command -v fzf &> /dev/null; then
-        [ -d ~/.fzf ] || git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-        ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
+        [ -d ~/.fzf ] || run git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+        run ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
     fi
 
     # ripgrep, bat (bat is batcat on Ubuntu)
-    sudo apt-get install -y -qq ripgrep bat 2>/dev/null || true
+    apt_run install -y ripgrep bat
     # Ubuntu names bat as batcat - create symlink
     if command -v batcat &> /dev/null && ! command -v bat &> /dev/null; then
         sudo ln -sf "$(which batcat)" /usr/local/bin/bat
     fi
 
     # zoxide - always install from upstream (apt versions on older distros are buggy with --cmd cd)
-    # Remove apt-installed zoxide first if present
     if dpkg -l | grep -q '^ii  zoxide '; then
-        sudo apt-get remove -y -qq zoxide 2>/dev/null || true
+        apt_run remove -y zoxide
     fi
     export PATH="$HOME/.local/bin:$PATH"
-    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+    if [ "$QUIET" -eq 1 ]; then
+        curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh > /dev/null 2>&1
+    else
+        curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+    fi
 
     # yazi
     if ! command -v yazi &> /dev/null; then
@@ -106,21 +145,21 @@ echo "[4/7] Installing zsh plugins..."
 if [ -d "${ZSH_CUSTOM}/plugins/zsh-autosuggestions" ]; then
     echo "  -> zsh-autosuggestions already installed"
 else
-    git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"
+    run git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"
     echo "  -> zsh-autosuggestions installed"
 fi
 
 if [ -d "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting" ]; then
     echo "  -> zsh-syntax-highlighting already installed"
 else
-    git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"
+    run git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"
     echo "  -> zsh-syntax-highlighting installed"
 fi
 
 if [ -d "${ZSH_CUSTOM}/plugins/fast-syntax-highlighting" ]; then
     echo "  -> fast-syntax-highlighting already installed"
 else
-    git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting "${ZSH_CUSTOM}/plugins/fast-syntax-highlighting"
+    run git clone --depth=1 https://github.com/zdharma-continuum/fast-syntax-highlighting "${ZSH_CUSTOM}/plugins/fast-syntax-highlighting"
     echo "  -> fast-syntax-highlighting installed"
 fi
 
@@ -138,14 +177,16 @@ fi
 # 6. Set up fzf keybindings
 echo "[6/7] Setting up fzf..."
 if [[ "$OS" == "Darwin" ]]; then
-    # Homebrew fzf install script
-    "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish 2>/dev/null || true
+    if [ "$QUIET" -eq 1 ]; then
+        "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish > /dev/null 2>&1 || true
+    else
+        "$(brew --prefix)/opt/fzf/install" --key-bindings --completion --no-update-rc --no-bash --no-fish || true
+    fi
 else
-    # fzf keybindings on Linux (git install already sets up ~/.fzf.zsh)
     if [ -f ~/.fzf.zsh ]; then
         echo "  -> fzf keybindings already configured"
     elif [ -f ~/.fzf/install ]; then
-        ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
+        run ~/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-fish
     fi
 fi
 echo "  -> fzf configured"

@@ -22,6 +22,13 @@ cd ~/dotfiles
 ./setup-mac.sh        # neovim (macOS)
 ```
 
+Pass `--quiet` (or `-q`) to suppress install output:
+
+```bash
+./setup-zsh.sh --quiet
+./setup-linux.sh -q
+```
+
 ## Shell tools installed by setup-zsh.sh
 
 | Tool | Purpose |
